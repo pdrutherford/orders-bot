@@ -24,8 +24,8 @@ DEBUG_LOG_CHANNELS  = os.environ.get("DEBUG_LOG_CHANNELS", "false").lower() == "
 # Emoji matching:
 # If CUSTOM_SCROLL_ID is set (e.g. 123456789012345678), we'll also match "<:scroll:ID>"
 CUSTOM_SCROLL_ID    = os.environ.get("CUSTOM_SCROLL_ID")          # None or numeric str
-SCROLL_UNICODE      = os.environ.get("SCROLL_UNICODE", "📜")      # default to the Unicode scroll
-CHECK_UNICODE       = os.environ.get("CHECK_UNICODE", "✅")
+SCROLL_UNICODE      = os.environ.get("SCROLL_UNICODE") or "📜"    # default to the Unicode scroll if empty/None
+CHECK_UNICODE       = os.environ.get("CHECK_UNICODE") or "✅"     # default to the Unicode check if empty/None
 
 # Channel/category allowlists (comma-separated numeric IDs). If empty, scan all.
 ALLOW_CHANNEL_IDS   = [int(x) for x in os.environ.get("ALLOW_CHANNEL_IDS", "").split(",") if x.strip().isdigit()]
