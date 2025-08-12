@@ -1,0 +1,64 @@
+name: Unacknowledged Scrolls Report
+
+on:
+  schedule:
+    # 16:00 UTC ≈ 9:00 AM America/Los_Angeles (PDT). Adjust as you prefer.
+    - cron: "0 16 * * *"
+  workflow_dispatch:
+    inputs:
+      window_hours:
+        description: "How many hours back to scan"
+        default: "24"
+        required: false
+      report_channel_id:
+        description: "Override target channel ID (optional)"
+        required: false
+      include_bots:
+        description: "Include bot-authored messages? (true/false)"
+        default: "false"
+        required: false
+      dry_run:
+        description: "Don't post, just log output (true/false)"
+        default: "false"
+        required: false
+
+jobs:
+  run-report:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: unack-scrolls
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r bot/requirements.txt
+
+      - name: Run report
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          DISCORD_GUILD_ID: ${{ secrets.DISCORD_GUILD_ID }}
+          DISCORD_TARGET_USER_ID: ${{ secrets.DISCORD_TARGET_USER_ID }}
+          # Default report channel from secrets; allow override via manual input
+          REPORT_CHANNEL_ID: ${{ github.event.inputs.report_channel_id || secrets.REPORT_CHANNEL_ID }}
+          # Knobs
+          WINDOW_HOURS: ${{ github.event.inputs.window_hours || '24' }}
+          INCLUDE_BOTS: ${{ github.event.inputs.include_bots || 'false' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          # Optional emoji config
+          CUSTOM_SCROLL_ID: ${{ secrets.CUSTOM_SCROLL_ID }}
+          SCROLL_UNICODE: ${{ vars.SCROLL_UNICODE }}
+          CHECK_UNICODE: ${{ vars.CHECK_UNICODE }}
+          # Optional allowlists (comma-separated IDs), stored as repo variables
+          ALLOW_CHANNEL_IDS: ${{ vars.ALLOW_CHANNEL_IDS }}
+          ALLOW_CATEGORY_IDS: ${{ vars.ALLOW_CATEGORY_IDS }}
+          # Safety cap
+          MAX_RESULTS: ${{ vars.MAX_RESULTS }}
+        run: |
+          python bot/report.py
