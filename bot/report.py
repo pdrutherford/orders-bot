@@ -15,7 +15,7 @@ TARGET_USER_ID      = int(os.environ["DISCORD_TARGET_USER_ID"])   # "you" (the h
 REPORT_CHANNEL_ID   = int(os.environ["REPORT_CHANNEL_ID"])        # where to post the report
 
 # Optional knobs (have sensibly safe defaults)
-WINDOW_HOURS        = int(os.environ.get("WINDOW_HOURS", "24"))   # scan window
+WINDOW_HOURS        = int(os.environ.get("WINDOW_HOURS", "24") or "24")   # scan window
 INCLUDE_BOTS        = os.environ.get("INCLUDE_BOTS", "false").lower() == "true"
 DRY_RUN             = os.environ.get("DRY_RUN", "false").lower() == "true"
 
@@ -30,7 +30,7 @@ ALLOW_CHANNEL_IDS   = [int(x) for x in os.environ.get("ALLOW_CHANNEL_IDS", "").s
 ALLOW_CATEGORY_IDS  = [int(x) for x in os.environ.get("ALLOW_CATEGORY_IDS", "").split(",") if x.strip().isdigit()]
 
 # Safety: cap total buttons/messages to avoid spam on large servers
-MAX_RESULTS         = int(os.environ.get("MAX_RESULTS", "500"))   # overall cap
+MAX_RESULTS         = int(os.environ.get("MAX_RESULTS", "500") or "500")   # overall cap
 MAX_BUTTONS_PER_MSG = 25  # Discord: 5 rows * 5 buttons
 
 # ---------------------------
