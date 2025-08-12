@@ -104,6 +104,34 @@ def _describe_messageable(ch: Union[discord.abc.GuildChannel, discord.Thread]) -
     except Exception:
         return f"<messageable id={getattr(ch, 'id', 'unknown')}>"
 
+# NEW: Allowlist helper used by iterators
+def _channel_allowed(ch: Union[discord.abc.GuildChannel, discord.Thread]) -> bool:
+    """
+    Return True if the given channel/thread should be scanned based on the optional
+    ALLOW_CHANNEL_IDS and ALLOW_CATEGORY_IDS allowlists.
+    - If ALLOW_CHANNEL_IDS provided: allow when either the object's id or its parent id (for threads) is in the list.
+    - If ALLOW_CATEGORY_IDS provided: allow when the category_id of the channel or its parent (for threads) is in the list.
+    """
+    try:
+        # Channel allowlist check
+        if ALLOW_CHANNEL_IDS:
+            ch_id = getattr(ch, "id", None)
+            parent_id = getattr(getattr(ch, "parent", None), "id", None) if isinstance(ch, discord.Thread) else None
+            if ch_id not in ALLOW_CHANNEL_IDS and parent_id not in ALLOW_CHANNEL_IDS:
+                return False
+
+        # Category allowlist check
+        if ALLOW_CATEGORY_IDS:
+            # Threads inherit category from their parent channel/forum
+            target = getattr(ch, "parent", ch) if isinstance(ch, discord.Thread) else ch
+            cat_id = getattr(target, "category_id", None)
+            if cat_id not in ALLOW_CATEGORY_IDS:
+                return False
+
+        return True
+    except Exception:
+        return False
+
 async def _iter_textish(guild: discord.Guild) -> AsyncIterator[discord.abc.Messageable]:
     """Yield text channels + forum channels' threads + archived public threads."""
     # Standard text channels
