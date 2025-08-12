@@ -107,9 +107,16 @@ async def _iter_textish(guild: discord.Guild) -> AsyncIterator[discord.abc.Messa
                 if _channel_allowed(th):
                     yield th
             # Archived public threads (private archived need perms & private=True fetch)
-            async for th in ch.archived_threads(limit=None, private=False):
-                if _channel_allowed(th):
-                    yield th
+            try:
+                async for th in ch.archived_threads(limit=None, private=False):
+                    if _channel_allowed(th):
+                        yield th
+            except discord.Forbidden:
+                # Skip archived threads if we don't have permission
+                continue
+            except discord.HTTPException:
+                # Skip on other API errors
+                continue
     # Forum channels: iterate their threads as well
     for forum in (getattr(guild, "forums", None) or getattr(guild, "forum_channels", [])):
         if not _channel_allowed(forum):
@@ -119,9 +126,16 @@ async def _iter_textish(guild: discord.Guild) -> AsyncIterator[discord.abc.Messa
             if _channel_allowed(th):
                 yield th
         # Archived public forum threads
-        async for th in forum.archived_threads(limit=None, private=False):
-            if _channel_allowed(th):
-                yield th
+        try:
+            async for th in forum.archived_threads(limit=None, private=False):
+                if _channel_allowed(th):
+                    yield th
+        except discord.Forbidden:
+            # Skip archived threads if we don't have permission
+            continue
+        except discord.HTTPException:
+            # Skip on other API errors
+            continue
 
 async def _scan(guild: discord.Guild) -> List[Dict]:
     since = datetime.now(timezone.utc) - timedelta(hours=WINDOW_HOURS)
