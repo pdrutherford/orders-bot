@@ -133,31 +133,44 @@ def _channel_allowed(ch: Union[discord.abc.GuildChannel, discord.Thread]) -> boo
         return False
 
 async def _iter_textish(guild: discord.Guild) -> AsyncIterator[discord.abc.Messageable]:
-    """Yield text channels + forum channels' threads + archived public threads."""
+    """Yield text channels + forum channels' threads + archived public/private threads."""
     # Standard text channels
     for ch in guild.text_channels:
         if _channel_allowed(ch):
             yield ch
-            # Active threads in text channels
+            # Active threads in text channels (includes private threads)
             for th in ch.threads:
                 if _channel_allowed(th):
                     yield th
-            # Archived public threads (private archived need perms & private=True fetch)
+            # Archived public threads
             try:
                 async for th in ch.archived_threads(limit=None, private=False):
                     if _channel_allowed(th):
                         yield th
             except discord.Forbidden:
                 # Skip archived threads if we don't have permission
-                continue
+                pass
             except discord.HTTPException:
                 # Skip on other API errors
-                continue
+                pass
+            # Archived PRIVATE threads (requires Manage Threads permission)
+            try:
+                async for th in ch.archived_threads(limit=None, private=True):
+                    if _channel_allowed(th):
+                        yield th
+            except discord.Forbidden:
+                # Skip private archived threads if we don't have permission
+                if DEBUG_LOG_CHANNELS:
+                    print(f"  Cannot access private archived threads in {ch.name} (missing permissions)")
+            except discord.HTTPException:
+                # Skip on other API errors
+                pass
+    
     # Forum channels: iterate their threads as well
     for forum in (getattr(guild, "forums", None) or getattr(guild, "forum_channels", [])):
         if not _channel_allowed(forum):
             continue
-        # Active forum threads
+        # Active forum threads (includes private threads)
         for th in forum.threads:
             if _channel_allowed(th):
                 yield th
@@ -168,10 +181,22 @@ async def _iter_textish(guild: discord.Guild) -> AsyncIterator[discord.abc.Messa
                     yield th
         except discord.Forbidden:
             # Skip archived threads if we don't have permission
-            continue
+            pass
         except discord.HTTPException:
             # Skip on other API errors
-            continue
+            pass
+        # Archived PRIVATE forum threads (requires Manage Threads permission)
+        try:
+            async for th in forum.archived_threads(limit=None, private=True):
+                if _channel_allowed(th):
+                    yield th
+        except discord.Forbidden:
+            # Skip private archived threads if we don't have permission
+            if DEBUG_LOG_CHANNELS:
+                print(f"  Cannot access private archived threads in forum {forum.name} (missing permissions)")
+        except discord.HTTPException:
+            # Skip on other API errors
+            pass
 
 async def _scan(guild: discord.Guild) -> List[Dict]:
     since = datetime.now(timezone.utc) - timedelta(hours=WINDOW_HOURS)
