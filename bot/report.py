@@ -69,7 +69,7 @@ async def _contains_scroll(msg: discord.Message) -> bool:
     for e in msg.embeds:
         if _match_scroll_in_text((getattr(e, "title", "") or "")):
             return True
-        if _match_scroll_in_text((getattr(e, "description", "") or "")):
+        if _match_scroll_in_text((getattr(e, "description", "📜 this is a test") or "")):
             return True
     return False
 
@@ -177,6 +177,19 @@ async def _scan(guild: discord.Guild) -> List[Dict]:
     since = datetime.now(timezone.utc) - timedelta(hours=WINDOW_HOURS)
     results: List[Dict] = []
     scanned = 0
+    messages_with_scroll = 0
+    messages_without_checkmark = 0
+    
+    print(f"DEBUG: Starting scan with configuration:")
+    print(f"  - WINDOW_HOURS: {WINDOW_HOURS}")
+    print(f"  - TARGET_USER_ID: {TARGET_USER_ID}")
+    print(f"  - SCROLL_UNICODE: '{SCROLL_UNICODE}'")
+    print(f"  - CHECK_UNICODE: '{CHECK_UNICODE}'")
+    print(f"  - CUSTOM_SCROLL_ID: {CUSTOM_SCROLL_ID}")
+    print(f"  - INCLUDE_BOTS: {INCLUDE_BOTS}")
+    print(f"  - ALLOW_CHANNEL_IDS: {ALLOW_CHANNEL_IDS}")
+    print(f"  - ALLOW_CATEGORY_IDS: {ALLOW_CATEGORY_IDS}")
+    print(f"  - Scanning messages after: {since}")
 
     async for ch in _iter_textish(guild):
         if DEBUG_LOG_CHANNELS:
@@ -186,34 +199,78 @@ async def _scan(guild: discord.Guild) -> List[Dict]:
                 # Avoid debug causing failures
                 pass
         try:
+            channel_messages = 0
             async for msg in ch.history(limit=None, after=since, oldest_first=False):
                 scanned += 1
+                channel_messages += 1
+                
+                # Skip bot messages if configured
                 if not INCLUDE_BOTS and getattr(msg.author, "bot", False):
                     continue
-                if await _contains_scroll(msg) and not await _user_has_checkmark(msg):
-                    results.append({
-                        "channel": f"#{getattr(msg.channel, 'name', msg.channel.id)}",
-                        "created_at_utc": msg.created_at.replace(tzinfo=timezone.utc).isoformat(timespec="minutes"),
-                        "jump_url": msg.jump_url,
-                        "preview": ((msg.content or "").replace("\n", " ").strip())[:140] or "(no text)",
-                    })
-                    if len(results) >= MAX_RESULTS:
-                        return results
-        except discord.Forbidden:
+                
+                # Check for scroll emoji
+                has_scroll = await _contains_scroll(msg)
+                if has_scroll:
+                    messages_with_scroll += 1
+                    print(f"DEBUG: Found scroll in message from {msg.author.name} (ID: {msg.author.id}) in #{getattr(msg.channel, 'name', 'unknown')}")
+                    print(f"  Message content: {msg.content[:100]}")
+                    print(f"  Message timestamp: {msg.created_at}")
+                    
+                    # Check for checkmark reaction from target user
+                    has_check = await _user_has_checkmark(msg)
+                    print(f"  Target user ({TARGET_USER_ID}) has ✅ reaction: {has_check}")
+                    
+                    # Get all reactions for debugging
+                    if msg.reactions:
+                        print(f"  All reactions on message:")
+                        for reaction in msg.reactions:
+                            print(f"    - {reaction.emoji}: {reaction.count} user(s)")
+                            if str(reaction.emoji) == CHECK_UNICODE:
+                                user_ids = []
+                                async for u in reaction.users(limit=None):
+                                    user_ids.append(f"{u.name} ({u.id})")
+                                print(f"      Users with ✅: {', '.join(user_ids)}")
+                    else:
+                        print(f"  No reactions on message")
+                    
+                    if not has_check:
+                        messages_without_checkmark += 1
+                        results.append({
+                            "channel": f"#{getattr(msg.channel, 'name', msg.channel.id)}",
+                            "created_at_utc": msg.created_at.replace(tzinfo=timezone.utc).isoformat(timespec="minutes"),
+                            "jump_url": msg.jump_url,
+                            "preview": ((msg.content or "").replace("\n", " ").strip())[:140] or "(no text)",
+                        })
+                        print(f"  ✓ Added to results (total: {len(results)})")
+                        
+                        if len(results) >= MAX_RESULTS:
+                            print(f"DEBUG SUMMARY: Reached MAX_RESULTS limit of {MAX_RESULTS}")
+                            return results
+            
+            if channel_messages > 0 and DEBUG_LOG_CHANNELS:
+                print(f"  Scanned {channel_messages} messages in this channel")
+                
+        except discord.Forbidden as e:
             if DEBUG_LOG_CHANNELS:
                 try:
-                    print(f"Skipping (forbidden): { _describe_messageable(ch) }")
+                    print(f"Skipping (forbidden): { _describe_messageable(ch) } - Error: {e}")
                 except Exception:
                     pass
             continue
-        except discord.HTTPException:
+        except discord.HTTPException as e:
             if DEBUG_LOG_CHANNELS:
                 try:
-                    print(f"Skipping (HTTP error): { _describe_messageable(ch) }")
+                    print(f"Skipping (HTTP error): { _describe_messageable(ch) } - Error: {e}")
                 except Exception:
                     pass
             continue
 
+    print(f"\nDEBUG FINAL SUMMARY:")
+    print(f"  - Total messages scanned: {scanned}")
+    print(f"  - Messages with scroll emoji: {messages_with_scroll}")
+    print(f"  - Messages without target user checkmark: {messages_without_checkmark}")
+    print(f"  - Results found: {len(results)}")
+    
     return results
 
 def _chunk_buttons(rows: List[Dict], chunk_size: int = MAX_BUTTONS_PER_MSG) -> Iterable[discord.ui.View]:
