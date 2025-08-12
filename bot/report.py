@@ -18,6 +18,8 @@ REPORT_CHANNEL_ID   = int(os.environ["REPORT_CHANNEL_ID"])        # where to pos
 WINDOW_HOURS        = int(os.environ.get("WINDOW_HOURS", "24") or "24")   # scan window
 INCLUDE_BOTS        = os.environ.get("INCLUDE_BOTS", "false").lower() == "true"
 DRY_RUN             = os.environ.get("DRY_RUN", "false").lower() == "true"
+# Debug logging for channels/threads being scanned
+DEBUG_LOG_CHANNELS  = os.environ.get("DEBUG_LOG_CHANNELS", "false").lower() == "true"
 
 # Emoji matching:
 # If CUSTOM_SCROLL_ID is set (e.g. 123456789012345678), we'll also match "<:scroll:ID>"
@@ -82,19 +84,25 @@ async def _user_has_checkmark(msg: discord.Message) -> bool:
             return True
     return False
 
-def _channel_allowed(ch: Union[discord.abc.GuildChannel, discord.Thread]) -> bool:
-    # Allowlist by channel
-    if ALLOW_CHANNEL_IDS and getattr(ch, "id", None) not in ALLOW_CHANNEL_IDS:
-        return False
-    # Allowlist by category (threads inherit their parent's category)
-    cat_id = None
-    if hasattr(ch, "category_id"):
-        cat_id = getattr(ch, "category_id", None)
-    elif isinstance(ch, discord.Thread) and getattr(ch, "parent", None) is not None:
-        cat_id = getattr(ch.parent, "category_id", None)
-    if ALLOW_CATEGORY_IDS and cat_id not in ALLOW_CATEGORY_IDS:
-        return False
-    return True
+
+def _describe_messageable(ch: Union[discord.abc.GuildChannel, discord.Thread]) -> str:
+    """Human-friendly description for debug logging."""
+    try:
+        if isinstance(ch, discord.Thread):
+            parent = getattr(ch, "parent", None)
+            parent_name = getattr(parent, "name", None)
+            parent_disp = f"#{parent_name}" if parent_name else f"parent_id={getattr(parent, 'id', 'unknown')}"
+            th_name = getattr(ch, "name", None) or str(getattr(ch, "id", "unknown"))
+            return f"Thread '{th_name}' in {parent_disp} (id={getattr(ch, 'id', 'unknown')})"
+        # TextChannel or other GuildChannel
+        name = getattr(ch, "name", None)
+        if isinstance(ch, discord.TextChannel):
+            disp = f"#{name}" if name else str(getattr(ch, 'id', 'unknown'))
+        else:
+            disp = name or str(getattr(ch, 'id', 'unknown'))
+        return f"Channel {disp} (id={getattr(ch, 'id', 'unknown')})"
+    except Exception:
+        return f"<messageable id={getattr(ch, 'id', 'unknown')}>"
 
 async def _iter_textish(guild: discord.Guild) -> AsyncIterator[discord.abc.Messageable]:
     """Yield text channels + forum channels' threads + archived public threads."""
@@ -143,6 +151,12 @@ async def _scan(guild: discord.Guild) -> List[Dict]:
     scanned = 0
 
     async for ch in _iter_textish(guild):
+        if DEBUG_LOG_CHANNELS:
+            try:
+                print(f"Scanning { _describe_messageable(ch) }")
+            except Exception:
+                # Avoid debug causing failures
+                pass
         try:
             async for msg in ch.history(limit=None, after=since, oldest_first=False):
                 scanned += 1
@@ -158,10 +172,18 @@ async def _scan(guild: discord.Guild) -> List[Dict]:
                     if len(results) >= MAX_RESULTS:
                         return results
         except discord.Forbidden:
-            # Skip channels/threads we can't read
+            if DEBUG_LOG_CHANNELS:
+                try:
+                    print(f"Skipping (forbidden): { _describe_messageable(ch) }")
+                except Exception:
+                    pass
             continue
         except discord.HTTPException:
-            # Transient API hiccup—skip this channel/thread
+            if DEBUG_LOG_CHANNELS:
+                try:
+                    print(f"Skipping (HTTP error): { _describe_messageable(ch) }")
+                except Exception:
+                    pass
             continue
 
     return results
