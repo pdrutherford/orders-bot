@@ -3,7 +3,7 @@ name: Unacknowledged Scrolls Report
 on:
   schedule:
     # 5:00 UTC ≈ 10:00 PM America/Los_Angeles (PDT). Adjust as you prefer.
-    - cron: "0 5 * * *"
+    - cron: "0 7,21 * * *"
   workflow_dispatch:
     inputs:
       window_hours:
