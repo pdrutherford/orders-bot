@@ -153,7 +153,7 @@ async def _post_results(channel: discord.abc.Messageable, results: List[Dict]) -
     total = len(results)
     if total == 0:
         embed = discord.Embed(
-            title="📜 Unacknowledged scrolls",
+            title="Unacknowledged scrolls",
             description=f"No matching messages in the last {WINDOW_HOURS} hours. 🎉",
         )
         await channel.send(embed=embed)
@@ -161,7 +161,7 @@ async def _post_results(channel: discord.abc.Messageable, results: List[Dict]) -
 
     # Intro embed
     embed = discord.Embed(
-        title="📜 Unacknowledged scrolls",
+        title="Unacknowledged scrolls",
         description=f"Tap a button to jump to a message. Window: last {WINDOW_HOURS} hours.",
     )
     embed.set_footer(text=f"Total: {total}")
