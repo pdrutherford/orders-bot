@@ -10,8 +10,8 @@ import discord
 # ---------------------------
 TOKEN               = os.environ["DISCORD_TOKEN"]
 GUILD_ID            = int(os.environ["DISCORD_GUILD_ID"])
-TARGET_USER_ID      = int(os.environ["DISCORD_TARGET_USER_ID"])   # "you" (the human who must add ✅)
 REPORT_CHANNEL_ID   = int(os.environ["REPORT_CHANNEL_ID"])        # where to post the report
+ACK_USER_IDS_RAW    = os.environ["DISCORD_ACK_USER_IDS"]          # comma-separated user IDs who can ✅
 
 # Simplified knobs
 WINDOW_HOURS        = int(os.environ.get("WINDOW_HOURS", "24") or "24")   # scan window
@@ -20,6 +20,30 @@ CONCURRENCY         = int(os.environ.get("CONCURRENCY", "10") or "10")    # para
 # Emoji matching: only Unicode scroll and check
 SCROLL_UNICODE      = "📜"
 CHECK_UNICODE       = "✅"
+
+# Parse list of acknowledger IDs from env
+def _parse_id_list(raw: str) -> List[int]:
+    parts = [p.strip() for p in (raw or "").split(",")]
+    ids: List[int] = []
+    for p in parts:
+        if not p:
+            continue
+        try:
+            ids.append(int(p))
+        except ValueError:
+            raise ValueError(f"DISCORD_ACK_USER_IDS contains a non-integer entry: '{p}'")
+    if not ids:
+        raise ValueError("DISCORD_ACK_USER_IDS is empty; provide at least one user ID")
+    # de-dup preserve order
+    seen = set()
+    uniq: List[int] = []
+    for i in ids:
+        if i not in seen:
+            uniq.append(i)
+            seen.add(i)
+    return uniq
+
+ACK_USER_IDS: List[int] = _parse_id_list(ACK_USER_IDS_RAW)
 
 # Safety: cap total buttons/messages to avoid spam on large servers
 MAX_RESULTS         = int(os.environ.get("MAX_RESULTS", "500") or "500")   # overall cap
@@ -56,14 +80,15 @@ async def _contains_scroll(msg: discord.Message) -> bool:
 
 
 async def _user_has_checkmark(msg: discord.Message) -> bool:
-    """Return True if the target user has reacted with the ✅ emoji on this message."""
+    """Return True if any configured acknowledger has reacted with the ✅ emoji on this message."""
     # Fast path: if no ✅ reaction on the message at all, user can't be among them.
     check_reaction = next((r for r in msg.reactions if str(r.emoji) == CHECK_UNICODE), None)
     if not check_reaction:
         return False
-    # Otherwise, enumerate ✅ users and stop early if TARGET_USER_ID is present
+    # Otherwise, enumerate ✅ users and stop early if any configured ID is present
+    ack_set = set(ACK_USER_IDS)
     async for u in check_reaction.users(limit=None):
-        if u.id == TARGET_USER_ID:
+        if u.id in ack_set:
             return True
     return False
 
@@ -97,7 +122,7 @@ async def _scan(guild: discord.Guild) -> List[Dict]:
                     if not await _contains_scroll(msg):
                         continue
 
-                    # If target user already acknowledged with ✅, skip
+                    # If any acknowledger already reacted with ✅, skip
                     if await _user_has_checkmark(msg):
                         continue
 

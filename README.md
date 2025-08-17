@@ -1,12 +1,12 @@
 # Unacknowledged Scrolls Reporter (Discord)
 
-Find all Discord messages in the last _N_ hours containing the 📜 emoji where **TARGET_USER** has **not** reacted with ✅, then post jump links (as buttons) into a channel.
+Find all Discord messages in the last _N_ hours containing the 📜 emoji where no configured acknowledger has reacted with ✅, then post jump links (as buttons) into a channel.
 
 ## What it does
 
 - Scans all text channels + threads (including archived public threads) in one guild.
 - Matches Unicode 📜 by default; can also match a server custom emoji via `CUSTOM_SCROLL_ID`.
-- For each match, verifies the target user hasn't added a ✅ reaction.
+- For each match, verifies none of the configured acknowledgers have added a ✅ reaction.
 - Posts an embed + link buttons directly in your chosen report channel.
 - Runs in GitHub Actions on a schedule or manually.
 
@@ -23,7 +23,7 @@ Find all Discord messages in the last _N_ hours containing the 📜 emoji where 
 
    - `DISCORD_TOKEN` – Bot token
    - `DISCORD_GUILD_ID` – Guild (server) ID
-   - `DISCORD_TARGET_USER_ID` – Your Discord user ID (the one that must add ✅)
+   - `DISCORD_ACK_USER_IDS` – Comma-separated Discord user IDs allowed to acknowledge with ✅ (required)
    - `REPORT_CHANNEL_ID` – Channel (or thread) ID to receive reports
    - _(Optional)_ `CUSTOM_SCROLL_ID` – Numeric ID of a custom `:scroll:` emoji
 
@@ -53,7 +53,7 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r bot/requirements.txt
 export DISCORD_TOKEN=... \
        DISCORD_GUILD_ID=... \
-       DISCORD_TARGET_USER_ID=... \
+   DISCORD_ACK_USER_IDS=111111111111111111,222222222222222222 \
        REPORT_CHANNEL_ID=... \
        WINDOW_HOURS=24 \
        DRY_RUN=true
@@ -75,7 +75,7 @@ Notes
 - [ ] Workflow `unack_scrolls.yml` exists and runs on schedule + manual.
 - [ ] Script logs in, scans last `WINDOW_HOURS`, and **posts link-button batches** to `REPORT_CHANNEL_ID`.
 - [ ] Matches **Unicode 📜** and (if provided) **`CUSTOM_SCROLL_ID`** occurrences.
-- [ ] Correctly **excludes** messages already reacted to with ✅ by **`TARGET_USER_ID`**.
+- [ ] Correctly **excludes** messages already reacted to with ✅ by any ID in **`DISCORD_ACK_USER_IDS`**.
 - [ ] Respects allowlists (`ALLOW_CHANNEL_IDS`, `ALLOW_CATEGORY_IDS`) if set.
 - [ ] No CSV files; output is **embed + buttons only**.
 - [ ] Gracefully skips channels without permission and survives HTTP hiccups.
