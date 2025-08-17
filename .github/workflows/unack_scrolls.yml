@@ -44,7 +44,7 @@ jobs:
         env:
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
           DISCORD_GUILD_ID: ${{ secrets.DISCORD_GUILD_ID }}
-          DISCORD_TARGET_USER_ID: ${{ secrets.DISCORD_TARGET_USER_ID }}
+          DISCORD_ACK_USER_IDS: ${{ secrets.DISCORD_ACK_USER_IDS }}
           # Default report channel from secrets; allow override via manual input
           REPORT_CHANNEL_ID: ${{ github.event.inputs.report_channel_id || secrets.REPORT_CHANNEL_ID }}
           # Knobs

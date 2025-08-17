@@ -11,7 +11,7 @@ import discord
 TOKEN               = os.environ["DISCORD_TOKEN"]
 GUILD_ID            = int(os.environ["DISCORD_GUILD_ID"])
 REPORT_CHANNEL_ID   = int(os.environ["REPORT_CHANNEL_ID"])        # where to post the report
-ACK_USER_IDS_RAW    = os.environ["DISCORD_ACK_USER_IDS"]          # comma-separated user IDs who can ✅
+ACK_USER_IDS_RAW    = os.environ.get("DISCORD_ACK_USER_IDS", "")  # comma-separated user IDs who can ✅
 
 # Simplified knobs
 WINDOW_HOURS        = int(os.environ.get("WINDOW_HOURS", "24") or "24")   # scan window
