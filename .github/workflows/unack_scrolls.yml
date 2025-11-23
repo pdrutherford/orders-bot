@@ -6,6 +6,10 @@ on:
     - cron: "0 7,21 * * *"
   workflow_dispatch:
     inputs:
+      channel_set:
+        description: "Which channel set to scan? (default/set1/set2/all)"
+        default: "default"
+        required: false
       window_hours:
         description: "How many hours back to scan"
         default: "24"
@@ -55,9 +59,9 @@ jobs:
           CUSTOM_SCROLL_ID: ${{ secrets.CUSTOM_SCROLL_ID }}
           SCROLL_UNICODE: ${{ vars.SCROLL_UNICODE }}
           CHECK_UNICODE: ${{ vars.CHECK_UNICODE }}
-          # Optional allowlists (comma-separated IDs), stored as repo variables
-          ALLOW_CHANNEL_IDS: ${{ vars.ALLOW_CHANNEL_IDS }}
-          ALLOW_CATEGORY_IDS: ${{ vars.ALLOW_CATEGORY_IDS }}
+          # Optional allowlists - selected by channel_set input
+          ALLOW_CHANNEL_IDS: ${{ github.event.inputs.channel_set == 'set1' && vars.ALLOW_CHANNEL_IDS_SET1 || github.event.inputs.channel_set == 'set2' && vars.ALLOW_CHANNEL_IDS_SET2 || github.event.inputs.channel_set == 'all' && '' || vars.ALLOW_CHANNEL_IDS }}
+          ALLOW_CATEGORY_IDS: ${{ github.event.inputs.channel_set == 'set1' && vars.ALLOW_CATEGORY_IDS_SET1 || github.event.inputs.channel_set == 'set2' && vars.ALLOW_CATEGORY_IDS_SET2 || github.event.inputs.channel_set == 'all' && '' || vars.ALLOW_CATEGORY_IDS }}
           # Safety cap
           MAX_RESULTS: ${{ vars.MAX_RESULTS }}
         run: |

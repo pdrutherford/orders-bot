@@ -31,20 +31,24 @@ Find all Discord messages in the last _N_ hours containing the 📜 emoji where 
 
    - _(Optional)_ `SCROLL_UNICODE` – Defaults to 📜
    - _(Optional)_ `CHECK_UNICODE` – Defaults to ✅
-   - _(Optional)_ `ALLOW_CHANNEL_IDS` – Comma-separated channel IDs to scan
-   - _(Optional)_ `ALLOW_CATEGORY_IDS` – Comma-separated category IDs to scan
    - _(Optional)_ `MAX_RESULTS` – Safety cap (default 500)
+   - _(Optional)_ **Channel allowlists** – If empty, all channels are scanned. Define up to 3 sets:
+     - `ALLOW_CHANNEL_IDS` / `ALLOW_CATEGORY_IDS` – Default set (used by scheduled runs)
+     - `ALLOW_CHANNEL_IDS_SET1` / `ALLOW_CATEGORY_IDS_SET1` – Alternate set 1
+     - `ALLOW_CHANNEL_IDS_SET2` / `ALLOW_CATEGORY_IDS_SET2` – Alternate set 2
+     - Format: Comma-separated Discord IDs (e.g., `123456789012345678,987654321098765432`)
 
 4. **Schedule**
-   - The workflow runs daily at 16:00 UTC (≈ 9:00 AM PT). Edit cron as needed.
+   - The workflow runs twice daily at 07:00 and 21:00 UTC. Edit cron as needed.
 
 ## Manual run (override)
 
 - In the Actions tab → **Unacknowledged Scrolls Report** → **Run workflow**
+  - `channel_set` – Which allowlist to use: `default`, `set1`, `set2`, or `all` (no filtering)
   - `window_hours` (e.g., `6`, `24`, `48`)
   - `report_channel_id` override (leave blank to use secret)
-  - `include_bots` (`true`/`false`)
-  - `dry_run` (`true`/`false`) — don't post, only log the results
+  - `include_bots` (`true`/`false`) – _Not currently implemented_
+  - `dry_run` (`true`/`false`) – _Not currently implemented_
 
 ## Local testing
 
@@ -56,17 +60,16 @@ export DISCORD_TOKEN=... \
    DISCORD_ACK_USER_IDS=111111111111111111,222222222222222222 \
        REPORT_CHANNEL_ID=... \
        WINDOW_HOURS=24 \
-       DRY_RUN=true
+       ALLOW_CHANNEL_IDS=123456789012345678,987654321098765432
 python bot/report.py
 ```
 
-Notes
+## Notes
 
-    Private archived threads require appropriate permissions (and code change to fetch private=True).
-
-    If your server uses a custom :scroll: emoji, set CUSTOM_SCROLL_ID to its numeric ID.
-
-    To include bot-authored messages, set INCLUDE_BOTS=true.
+- Private archived threads require appropriate permissions (and code change to fetch `private=True`).
+- If your server uses a custom `:scroll:` emoji, set `CUSTOM_SCROLL_ID` to its numeric ID.
+- Channel/category allowlists work together: a channel matches if it's in `ALLOW_CHANNEL_IDS` **OR** its category is in `ALLOW_CATEGORY_IDS`.
+- If no allowlists are configured, all channels in the guild are scanned.
 
 ---
 
