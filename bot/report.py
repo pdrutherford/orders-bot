@@ -17,12 +17,16 @@ ACK_USER_IDS_RAW    = os.environ.get("DISCORD_ACK_USER_IDS", "")  # comma-separa
 WINDOW_HOURS        = int(os.environ.get("WINDOW_HOURS", "24") or "24")   # scan window
 CONCURRENCY         = int(os.environ.get("CONCURRENCY", "10") or "10")    # parallel channel scans
 
+# Optional allowlists (comma-separated channel/category IDs)
+ALLOW_CHANNEL_IDS_RAW   = os.environ.get("ALLOW_CHANNEL_IDS", "")
+ALLOW_CATEGORY_IDS_RAW  = os.environ.get("ALLOW_CATEGORY_IDS", "")
+
 # Emoji matching: only Unicode scroll and check
 SCROLL_UNICODE      = "📜"
 CHECK_UNICODE       = "✅"
 
 # Parse list of acknowledger IDs from env
-def _parse_id_list(raw: str) -> List[int]:
+def _parse_id_list(raw: str, required: bool = True, name: str = "ID list") -> List[int]:
     parts = [p.strip() for p in (raw or "").split(",")]
     ids: List[int] = []
     for p in parts:
@@ -31,9 +35,9 @@ def _parse_id_list(raw: str) -> List[int]:
         try:
             ids.append(int(p))
         except ValueError:
-            raise ValueError(f"DISCORD_ACK_USER_IDS contains a non-integer entry: '{p}'")
-    if not ids:
-        raise ValueError("DISCORD_ACK_USER_IDS is empty; provide at least one user ID")
+            raise ValueError(f"{name} contains a non-integer entry: '{p}'")
+    if required and not ids:
+        raise ValueError(f"{name} is empty; provide at least one ID")
     # de-dup preserve order
     seen = set()
     uniq: List[int] = []
@@ -43,7 +47,9 @@ def _parse_id_list(raw: str) -> List[int]:
             seen.add(i)
     return uniq
 
-ACK_USER_IDS: List[int] = _parse_id_list(ACK_USER_IDS_RAW)
+ACK_USER_IDS: List[int] = _parse_id_list(ACK_USER_IDS_RAW, required=True, name="DISCORD_ACK_USER_IDS")
+ALLOW_CHANNEL_IDS: List[int] = _parse_id_list(ALLOW_CHANNEL_IDS_RAW, required=False, name="ALLOW_CHANNEL_IDS")
+ALLOW_CATEGORY_IDS: List[int] = _parse_id_list(ALLOW_CATEGORY_IDS_RAW, required=False, name="ALLOW_CATEGORY_IDS")
 
 # Safety: cap total buttons/messages to avoid spam on large servers
 MAX_RESULTS         = int(os.environ.get("MAX_RESULTS", "500") or "500")   # overall cap
@@ -96,14 +102,38 @@ async def _user_has_checkmark(msg: discord.Message) -> bool:
 def _list_messageables(guild: discord.Guild):
     """Return channels/threads to scan (no archived thread fetching)."""
     items: List[discord.abc.Messageable] = []
+    
+    # Helper to check if a channel passes allowlist filters
+    def _passes_filters(ch) -> bool:
+        # If allowlists are empty, allow everything
+        if not ALLOW_CHANNEL_IDS and not ALLOW_CATEGORY_IDS:
+            return True
+        
+        # Check channel ID allowlist
+        if ALLOW_CHANNEL_IDS and ch.id in ALLOW_CHANNEL_IDS:
+            return True
+        
+        # Check category ID allowlist (if channel has a category)
+        if ALLOW_CATEGORY_IDS:
+            category_id = getattr(ch, "category_id", None)
+            if category_id and category_id in ALLOW_CATEGORY_IDS:
+                return True
+        
+        # If allowlists are set but channel doesn't match, reject
+        return False
+    
     # Text channels
-    items.extend(guild.text_channels)
-    # Active threads in text channels (includes private threads)
     for ch in guild.text_channels:
-        items.extend(ch.threads)
+        if _passes_filters(ch):
+            items.append(ch)
+            # Active threads in allowed text channels (includes private threads)
+            items.extend(ch.threads)
+    
     # Active forum threads (if forums are present)
     for forum in (getattr(guild, "forums", None) or getattr(guild, "forum_channels", [])):
-        items.extend(forum.threads)
+        if _passes_filters(forum):
+            items.extend(forum.threads)
+    
     return items
 
 
