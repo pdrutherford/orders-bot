@@ -37,6 +37,9 @@ Find all Discord messages in the last _N_ hours containing the 📜 emoji where 
      - `ALLOW_CHANNEL_IDS_SET1` / `ALLOW_CATEGORY_IDS_SET1` – Alternate set 1
      - `ALLOW_CHANNEL_IDS_SET2` / `ALLOW_CATEGORY_IDS_SET2` – Alternate set 2
      - Format: Comma-separated Discord IDs (e.g., `123456789012345678,987654321098765432`)
+   - _(Optional)_ **Channel name filters** – Can be passed at runtime via manual workflow:
+     - `ALLOW_CHANNEL_NAMES` – Comma-separated channel names to include (e.g., `general,announcements`)
+     - `EXCLUDE_CHANNEL_NAMES` – Comma-separated channel names to exclude (e.g., `off-topic,bot-spam`)
 
 4. **Schedule**
    - The workflow runs twice daily at 07:00 and 21:00 UTC. Edit cron as needed.
@@ -46,9 +49,8 @@ Find all Discord messages in the last _N_ hours containing the 📜 emoji where 
 - In the Actions tab → **Unacknowledged Scrolls Report** → **Run workflow**
   - `channel_set` – Which allowlist to use: `default`, `set1`, `set2`, or `all` (no filtering)
   - `window_hours` (e.g., `6`, `24`, `48`)
-  - `report_channel_id` override (leave blank to use secret)
-  - `include_bots` (`true`/`false`) – _Not currently implemented_
-  - `dry_run` (`true`/`false`) – _Not currently implemented_
+  - `allow_channel_names` – Comma-separated channel names to include (e.g., `general,announcements`)
+  - `exclude_channel_names` – Comma-separated channel names to exclude (e.g., `off-topic,bot-spam`)
 
 ## Local testing
 
@@ -60,7 +62,9 @@ export DISCORD_TOKEN=... \
    DISCORD_ACK_USER_IDS=111111111111111111,222222222222222222 \
        REPORT_CHANNEL_ID=... \
        WINDOW_HOURS=24 \
-       ALLOW_CHANNEL_IDS=123456789012345678,987654321098765432
+       ALLOW_CHANNEL_IDS=123456789012345678,987654321098765432 \
+       ALLOW_CHANNEL_NAMES=general,announcements \
+       EXCLUDE_CHANNEL_NAMES=off-topic,bot-spam
 python bot/report.py
 ```
 
@@ -68,8 +72,11 @@ python bot/report.py
 
 - Private archived threads require appropriate permissions (and code change to fetch `private=True`).
 - If your server uses a custom `:scroll:` emoji, set `CUSTOM_SCROLL_ID` to its numeric ID.
-- Channel/category allowlists work together: a channel matches if it's in `ALLOW_CHANNEL_IDS` **OR** its category is in `ALLOW_CATEGORY_IDS`.
-- If no allowlists are configured, all channels in the guild are scanned.
+- **Channel filtering behavior:**
+  - Exclude lists take priority: if a channel name is in `EXCLUDE_CHANNEL_NAMES`, it's skipped regardless of other filters.
+  - If any allow filters are set (`ALLOW_CHANNEL_IDS`, `ALLOW_CATEGORY_IDS`, or `ALLOW_CHANNEL_NAMES`), a channel must match at least one to be scanned.
+  - Channel name filters work alongside ID-based filters: a channel matches if it passes any allow filter (name, channel ID, or category ID).
+  - If no filters are configured, all channels in the guild are scanned.
 
 ---
 

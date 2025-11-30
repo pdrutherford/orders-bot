@@ -12,18 +12,13 @@ on:
         required: false
       window_hours:
         description: "How many hours back to scan"
-        default: "24"
+        default: "168"
         required: false
-      report_channel_id:
-        description: "Override target channel ID (optional)"
+      allow_channel_names:
+        description: "Comma-separated channel names to include (optional)"
         required: false
-      include_bots:
-        description: "Include bot-authored messages? (true/false)"
-        default: "false"
-        required: false
-      dry_run:
-        description: "Don't post, just log output (true/false)"
-        default: "false"
+      exclude_channel_names:
+        description: "Comma-separated channel names to exclude (optional)"
         required: false
 
 jobs:
@@ -49,12 +44,9 @@ jobs:
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
           DISCORD_GUILD_ID: ${{ secrets.DISCORD_GUILD_ID }}
           DISCORD_ACK_USER_IDS: ${{ secrets.DISCORD_ACK_USER_IDS }}
-          # Default report channel from secrets; allow override via manual input
-          REPORT_CHANNEL_ID: ${{ github.event.inputs.report_channel_id || secrets.REPORT_CHANNEL_ID }}
+          REPORT_CHANNEL_ID: ${{ secrets.REPORT_CHANNEL_ID }}
           # Knobs
-          WINDOW_HOURS: ${{ github.event.inputs.window_hours || '24' }}
-          INCLUDE_BOTS: ${{ github.event.inputs.include_bots || 'false' }}
-          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          WINDOW_HOURS: ${{ github.event.inputs.window_hours || '168' }}
           # Optional emoji config
           CUSTOM_SCROLL_ID: ${{ secrets.CUSTOM_SCROLL_ID }}
           SCROLL_UNICODE: ${{ vars.SCROLL_UNICODE }}
@@ -62,6 +54,9 @@ jobs:
           # Optional allowlists - selected by channel_set input
           ALLOW_CHANNEL_IDS: ${{ github.event.inputs.channel_set == 'set1' && vars.ALLOW_CHANNEL_IDS_SET1 || github.event.inputs.channel_set == 'set2' && vars.ALLOW_CHANNEL_IDS_SET2 || github.event.inputs.channel_set == 'all' && '' || vars.ALLOW_CHANNEL_IDS }}
           ALLOW_CATEGORY_IDS: ${{ github.event.inputs.channel_set == 'set1' && vars.ALLOW_CATEGORY_IDS_SET1 || github.event.inputs.channel_set == 'set2' && vars.ALLOW_CATEGORY_IDS_SET2 || github.event.inputs.channel_set == 'all' && '' || vars.ALLOW_CATEGORY_IDS }}
+          # Channel name filters (from manual inputs)
+          ALLOW_CHANNEL_NAMES: ${{ github.event.inputs.allow_channel_names }}
+          EXCLUDE_CHANNEL_NAMES: ${{ github.event.inputs.exclude_channel_names }}
           # Safety cap
           MAX_RESULTS: ${{ vars.MAX_RESULTS }}
         run: |

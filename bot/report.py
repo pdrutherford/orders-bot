@@ -14,12 +14,16 @@ REPORT_CHANNEL_ID   = int(os.environ["REPORT_CHANNEL_ID"])        # where to pos
 ACK_USER_IDS_RAW    = os.environ.get("DISCORD_ACK_USER_IDS", "")  # comma-separated user IDs who can ✅
 
 # Simplified knobs
-WINDOW_HOURS        = int(os.environ.get("WINDOW_HOURS", "24") or "24")   # scan window
+WINDOW_HOURS        = int(os.environ.get("WINDOW_HOURS", "168") or "168")   # scan window
 CONCURRENCY         = int(os.environ.get("CONCURRENCY", "10") or "10")    # parallel channel scans
 
 # Optional allowlists (comma-separated channel/category IDs)
 ALLOW_CHANNEL_IDS_RAW   = os.environ.get("ALLOW_CHANNEL_IDS", "")
 ALLOW_CATEGORY_IDS_RAW  = os.environ.get("ALLOW_CATEGORY_IDS", "")
+
+# Optional channel name filters (comma-separated channel names)
+ALLOW_CHANNEL_NAMES_RAW = os.environ.get("ALLOW_CHANNEL_NAMES", "")
+EXCLUDE_CHANNEL_NAMES_RAW = os.environ.get("EXCLUDE_CHANNEL_NAMES", "")
 
 # Emoji matching: only Unicode scroll and check
 SCROLL_UNICODE      = "📜"
@@ -47,9 +51,23 @@ def _parse_id_list(raw: str, required: bool = True, name: str = "ID list") -> Li
             seen.add(i)
     return uniq
 
+def _parse_string_list(raw: str, name: str = "string list") -> List[str]:
+    """Parse comma-separated list of strings (e.g., channel names)."""
+    parts = [p.strip() for p in (raw or "").split(",") if p.strip()]
+    # de-dup preserve order
+    seen = set()
+    uniq: List[str] = []
+    for s in parts:
+        if s not in seen:
+            uniq.append(s)
+            seen.add(s)
+    return uniq
+
 ACK_USER_IDS: List[int] = _parse_id_list(ACK_USER_IDS_RAW, required=True, name="DISCORD_ACK_USER_IDS")
 ALLOW_CHANNEL_IDS: List[int] = _parse_id_list(ALLOW_CHANNEL_IDS_RAW, required=False, name="ALLOW_CHANNEL_IDS")
 ALLOW_CATEGORY_IDS: List[int] = _parse_id_list(ALLOW_CATEGORY_IDS_RAW, required=False, name="ALLOW_CATEGORY_IDS")
+ALLOW_CHANNEL_NAMES: List[str] = _parse_string_list(ALLOW_CHANNEL_NAMES_RAW, name="ALLOW_CHANNEL_NAMES")
+EXCLUDE_CHANNEL_NAMES: List[str] = _parse_string_list(EXCLUDE_CHANNEL_NAMES_RAW, name="EXCLUDE_CHANNEL_NAMES")
 
 # Safety: cap total buttons/messages to avoid spam on large servers
 MAX_RESULTS         = int(os.environ.get("MAX_RESULTS", "500") or "500")   # overall cap
@@ -105,8 +123,20 @@ def _list_messageables(guild: discord.Guild):
     
     # Helper to check if a channel passes allowlist filters
     def _passes_filters(ch) -> bool:
-        # If allowlists are empty, allow everything
-        if not ALLOW_CHANNEL_IDS and not ALLOW_CATEGORY_IDS:
+        channel_name = getattr(ch, "name", None) or ""
+        
+        # Apply exclude list first (takes priority)
+        if EXCLUDE_CHANNEL_NAMES:
+            if channel_name in EXCLUDE_CHANNEL_NAMES:
+                return False
+        
+        # If no filters at all, allow everything
+        has_any_filter = (ALLOW_CHANNEL_IDS or ALLOW_CATEGORY_IDS or ALLOW_CHANNEL_NAMES)
+        if not has_any_filter:
+            return True
+        
+        # Check channel name allowlist
+        if ALLOW_CHANNEL_NAMES and channel_name in ALLOW_CHANNEL_NAMES:
             return True
         
         # Check channel ID allowlist
