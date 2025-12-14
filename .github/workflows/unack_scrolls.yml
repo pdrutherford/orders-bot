@@ -2,14 +2,13 @@ name: Unacknowledged Scrolls Report
 
 on:
   schedule:
-    # 5:00 UTC ≈ 10:00 PM America/Los_Angeles (PDT). Adjust as you prefer.
-    - cron: "0 7,21 * * *"
+    # 10:00 AM PST = 18:00 UTC (or 19:00 UTC during PDT)
+    # 5:00 PM PST = 01:00 UTC next day (or 02:00 UTC during PDT)
+    # Using PST (UTC-8) times: 18:00 UTC and 01:00 UTC
+    - cron: "0 18 * * *"  # 10am PST
+    - cron: "0 1 * * *"   # 5pm PST (previous day)
   workflow_dispatch:
     inputs:
-      channel_set:
-        description: "Which channel set to scan? (default/set1/set2/all)"
-        default: "default"
-        required: false
       window_hours:
         description: "How many hours back to scan"
         default: "168"
@@ -18,7 +17,8 @@ on:
         description: "Comma-separated channel names to include (optional)"
         required: false
       exclude_channel_names:
-        description: "Comma-separated channel names to exclude (optional)"
+        description: "Comma-separated channel names to exclude (message-tracker)"
+        default: "message-tracker"
         required: false
 
 jobs:
@@ -51,12 +51,13 @@ jobs:
           CUSTOM_SCROLL_ID: ${{ secrets.CUSTOM_SCROLL_ID }}
           SCROLL_UNICODE: ${{ vars.SCROLL_UNICODE }}
           CHECK_UNICODE: ${{ vars.CHECK_UNICODE }}
-          # Optional allowlists - selected by channel_set input
-          ALLOW_CHANNEL_IDS: ${{ github.event.inputs.channel_set == 'set1' && vars.ALLOW_CHANNEL_IDS_SET1 || github.event.inputs.channel_set == 'set2' && vars.ALLOW_CHANNEL_IDS_SET2 || github.event.inputs.channel_set == 'all' && '' || vars.ALLOW_CHANNEL_IDS }}
-          ALLOW_CATEGORY_IDS: ${{ github.event.inputs.channel_set == 'set1' && vars.ALLOW_CATEGORY_IDS_SET1 || github.event.inputs.channel_set == 'set2' && vars.ALLOW_CATEGORY_IDS_SET2 || github.event.inputs.channel_set == 'all' && '' || vars.ALLOW_CATEGORY_IDS }}
-          # Channel name filters (from manual inputs)
-          ALLOW_CHANNEL_NAMES: ${{ github.event.inputs.allow_channel_names }}
-          EXCLUDE_CHANNEL_NAMES: ${{ github.event.inputs.exclude_channel_names }}
+          # Channel name filters
+          # For scheduled runs: target only message-tracker
+          # For manual runs: use inputs (message-tracker excluded by default)
+          ALLOW_CHANNEL_NAMES: ${{ github.event_name == 'schedule' && 'message-tracker' || github.event.inputs.allow_channel_names }}
+          EXCLUDE_CHANNEL_NAMES: ${{ github.event_name == 'schedule' && '' || github.event.inputs.exclude_channel_names }}
+          # Delivery phrase filtering (only for scheduled runs targeting message-tracker)
+          REQUIRE_DELIVERY_PHRASE: ${{ github.event_name == 'schedule' && 'true' || 'false' }}
           # Safety cap
           MAX_RESULTS: ${{ vars.MAX_RESULTS }}
         run: |

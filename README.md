@@ -42,12 +42,22 @@ Find all Discord messages in the last _N_ hours containing the 📜 emoji where 
      - `EXCLUDE_CHANNEL_NAMES` – Comma-separated channel names to exclude (e.g., `off-topic,bot-spam`)
 
 4. **Schedule**
-   - The workflow runs twice daily at 07:00 and 21:00 UTC. Edit cron as needed.
+   - The workflow runs twice daily at **10:00 AM PST** and **5:00 PM PST**.
+   - Scheduled runs target **only the #message-tracker channel**.
+   - Messages must start with 📜 followed by the delivery phrase pattern for **today's date and time slot**:
+     - **10am run**: Finds messages starting with `📜 delivery <month> <day> noon` (today's date)
+     - **5pm run**: Finds messages starting with `📜 delivery <month> <day> evening` (today's date)
+     - Month: 3-letter shorthand (jan, feb, mar, etc.) or full name (january, february, march, etc.)
+     - Day: 1-2 digit number matching today's day of month
+     - Example on Dec 12: `📜 delivery dec 12 noon`, `📜 Delivery December 12 evening`
 
 ## Manual run (override)
 
 - In the Actions tab → **Unacknowledged Scrolls Report** → **Run workflow**
-  - `channel_set` – Which allowlist to use: `default`, `set1`, `set2`, or `all` (no filtering)
+  - `window_hours` – How many hours back to scan (default: 168)
+  - `allow_channel_names` – Specific channel names to include (comma-separated)
+  - `exclude_channel_names` – Channel names to exclude (defaults to `message-tracker`; clear to include it)
+  - Manual runs do **not** enforce the delivery phrase pattern or date/time matching
   - `window_hours` (e.g., `6`, `24`, `48`)
   - `allow_channel_names` – Comma-separated channel names to include (e.g., `general,announcements`)
   - `exclude_channel_names` – Comma-separated channel names to exclude (e.g., `off-topic,bot-spam`)

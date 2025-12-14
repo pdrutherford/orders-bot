@@ -25,6 +25,9 @@ ALLOW_CATEGORY_IDS_RAW  = os.environ.get("ALLOW_CATEGORY_IDS", "")
 ALLOW_CHANNEL_NAMES_RAW = os.environ.get("ALLOW_CHANNEL_NAMES", "")
 EXCLUDE_CHANNEL_NAMES_RAW = os.environ.get("EXCLUDE_CHANNEL_NAMES", "")
 
+# Optional delivery phrase filtering (for scheduled runs)
+REQUIRE_DELIVERY_PHRASE = os.environ.get("REQUIRE_DELIVERY_PHRASE", "").lower() in ("true", "1", "yes")
+
 # Emoji matching: only Unicode scroll and check
 SCROLL_UNICODE      = "📜"
 CHECK_UNICODE       = "✅"
@@ -88,6 +91,77 @@ client = discord.Client(intents=intents)
 def _match_scroll_in_text(text: str) -> bool:
     """Return True if the Unicode scroll appears in the given text."""
     return bool(text) and (SCROLL_UNICODE in text)
+
+
+def _matches_delivery_phrase(text: str) -> bool:
+    """Return True if text starts with scroll emoji followed by 'delivery <month> <day> <time>' pattern matching today's date and current time slot.
+    
+    Pattern: '📜 delivery <month> <day> <time>' or ':scroll: delivery <month> <day> <time>'
+    - month: 3-letter shorthand (jan, feb, etc.) or full name (january, february, etc.)
+    - day: 1-2 digit number (1-31)
+    - time: 'noon' or 'evening'
+    
+    When REQUIRE_DELIVERY_PHRASE is enabled (scheduled runs):
+    - Matches only messages for today's date (in PST/PDT timezone)
+    - 10am PST run: matches 'noon' deliveries
+    - 5pm PST run: matches 'evening' deliveries
+    """
+    import re
+    from zoneinfo import ZoneInfo
+    
+    if not text:
+        return False
+    
+    # Parse the delivery phrase - must start with scroll emoji, then delivery phrase
+    # Accept both 3-letter and full month names
+    pattern = r'^📜\s*delivery\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})\s+(noon|evening)'
+    match = re.match(pattern, text.strip().lower())
+    if not match:
+        return False
+    
+    month_str, day_str, time_slot = match.groups()
+    
+    # Get current time in PST/PDT (America/Los_Angeles)
+    pst_tz = ZoneInfo("America/Los_Angeles")
+    now_pst = datetime.now(pst_tz)
+    
+    # Map month names (both short and full) to numbers
+    month_map = {
+        'jan': 1, 'january': 1,
+        'feb': 2, 'february': 2,
+        'mar': 3, 'march': 3,
+        'apr': 4, 'april': 4,
+        'may': 5,
+        'jun': 6, 'june': 6,
+        'jul': 7, 'july': 7,
+        'aug': 8, 'august': 8,
+        'sep': 9, 'september': 9,
+        'oct': 10, 'october': 10,
+        'nov': 11, 'november': 11,
+        'dec': 12, 'december': 12
+    }
+    
+    message_month = month_map[month_str]
+    message_day = int(day_str)
+    
+    # Check if message is for today
+    if message_month != now_pst.month or message_day != now_pst.day:
+        return False
+    
+    # Determine expected time slot based on current hour in PST
+    # 10am PST run (hour 10): look for 'noon' deliveries
+    # 5pm PST run (hour 17): look for 'evening' deliveries
+    current_hour = now_pst.hour
+    
+    if 9 <= current_hour < 14:  # Morning run window (10am ±few hours)
+        expected_slot = 'noon'
+    elif 16 <= current_hour < 22:  # Evening run window (5pm ±few hours)
+        expected_slot = 'evening'
+    else:
+        # Outside expected run windows - accept both to be safe
+        return True
+    
+    return time_slot == expected_slot
 
 
 async def _contains_scroll(msg: discord.Message) -> bool:
@@ -185,6 +259,11 @@ async def _scan(guild: discord.Guild) -> List[Dict]:
                     # If any acknowledger already reacted with ✅, skip
                     if await _user_has_checkmark(msg):
                         continue
+
+                    # If delivery phrase filtering is enabled, check the pattern
+                    if REQUIRE_DELIVERY_PHRASE:
+                        if not _matches_delivery_phrase(msg.content or ""):
+                            continue
 
                     # Otherwise record the message
                     rows.append({
