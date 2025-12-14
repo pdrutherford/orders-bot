@@ -99,11 +99,11 @@ def _matches_delivery_phrase(text: str) -> bool:
     Pattern: '📜 delivery <month> <day> <time>' or ':scroll: delivery <month> <day> <time>'
     - month: 3-letter shorthand (jan, feb, etc.) or full name (january, february, etc.)
     - day: 1-2 digit number (1-31)
-    - time: 'noon' or 'evening'
+    - time: 'morning' or 'evening'
     
     When REQUIRE_DELIVERY_PHRASE is enabled (scheduled runs):
     - Matches only messages for today's date (in PST/PDT timezone)
-    - 10am PST run: matches 'noon' deliveries
+    - 10am PST run: matches 'morning' deliveries
     - 5pm PST run: matches 'evening' deliveries
     """
     import re
@@ -114,7 +114,7 @@ def _matches_delivery_phrase(text: str) -> bool:
     
     # Parse the delivery phrase - must start with scroll emoji, then delivery phrase
     # Accept both 3-letter and full month names
-    pattern = r'^📜\s*delivery\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})\s+(noon|evening)'
+    pattern = r'^📜\s*delivery\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})\s+(morning|evening)'
     match = re.match(pattern, text.strip().lower())
     if not match:
         return False
@@ -149,12 +149,12 @@ def _matches_delivery_phrase(text: str) -> bool:
         return False
     
     # Determine expected time slot based on current hour in PST
-    # 10am PST run (hour 10): look for 'noon' deliveries
+    # 10am PST run (hour 10): look for 'morning' deliveries
     # 5pm PST run (hour 17): look for 'evening' deliveries
     current_hour = now_pst.hour
     
     if 9 <= current_hour < 14:  # Morning run window (10am ±few hours)
-        expected_slot = 'noon'
+        expected_slot = 'morning'
     elif 16 <= current_hour < 22:  # Evening run window (5pm ±few hours)
         expected_slot = 'evening'
     else:

@@ -45,11 +45,11 @@ Find all Discord messages in the last _N_ hours containing the 📜 emoji where 
    - The workflow runs twice daily at **10:00 AM PST** and **5:00 PM PST**.
    - Scheduled runs target **only the #message-tracker channel**.
    - Messages must start with 📜 followed by the delivery phrase pattern for **today's date and time slot**:
-     - **10am run**: Finds messages starting with `📜 delivery <month> <day> noon` (today's date)
+     - **10am run**: Finds messages starting with `📜 delivery <month> <day> morning` (today's date)
      - **5pm run**: Finds messages starting with `📜 delivery <month> <day> evening` (today's date)
      - Month: 3-letter shorthand (jan, feb, mar, etc.) or full name (january, february, march, etc.)
      - Day: 1-2 digit number matching today's day of month
-     - Example on Dec 12: `📜 delivery dec 12 noon`, `📜 Delivery December 12 evening`
+     - Example on Dec 12: `📜 delivery dec 12 morning`, `📜 Delivery December 12 evening`
 
 ## Manual run (override)
 

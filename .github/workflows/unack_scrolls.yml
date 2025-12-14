@@ -5,8 +5,8 @@ on:
     # 10:00 AM PST = 18:00 UTC (or 19:00 UTC during PDT)
     # 5:00 PM PST = 01:00 UTC next day (or 02:00 UTC during PDT)
     # Using PST (UTC-8) times: 18:00 UTC and 01:00 UTC
-    - cron: "0 18 * * *"  # 10am PST
-    - cron: "0 1 * * *"   # 5pm PST (previous day)
+    - cron: "0 18 * * *" # 10am PST
+    - cron: "0 1 * * *" # 5pm PST (previous day)
   workflow_dispatch:
     inputs:
       window_hours:
