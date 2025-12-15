@@ -17,8 +17,7 @@ on:
         description: "Comma-separated channel names to include (optional)"
         required: false
       exclude_channel_names:
-        description: "Comma-separated channel names to exclude (message-tracker)"
-        default: "message-tracker"
+        description: "Comma-separated channel names to exclude (optional)"
         required: false
 
 jobs:
