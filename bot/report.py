@@ -103,7 +103,7 @@ def _matches_delivery_phrase(text: str) -> bool:
     
     When REQUIRE_DELIVERY_PHRASE is enabled (scheduled runs):
     - Matches only messages for today's date (in PST/PDT timezone)
-    - 10am PST run: matches 'morning' deliveries
+    - 5am PST run: matches 'morning' deliveries
     - 5pm PST run: matches 'evening' deliveries
     """
     import re
@@ -149,11 +149,11 @@ def _matches_delivery_phrase(text: str) -> bool:
         return False
     
     # Determine expected time slot based on current hour in PST
-    # 10am PST run (hour 10): look for 'morning' deliveries
+    # 5am PST run (hour 5): look for 'morning' deliveries
     # 5pm PST run (hour 17): look for 'evening' deliveries
     current_hour = now_pst.hour
     
-    if 9 <= current_hour < 14:  # Morning run window (10am ±few hours)
+    if 4 <= current_hour < 9:  # Morning run window (5am ±few hours)
         expected_slot = 'morning'
     elif 16 <= current_hour < 22:  # Evening run window (5pm ±few hours)
         expected_slot = 'evening'

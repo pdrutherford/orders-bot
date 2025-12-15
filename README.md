@@ -42,10 +42,10 @@ Find all Discord messages in the last _N_ hours containing the 📜 emoji where 
      - `EXCLUDE_CHANNEL_NAMES` – Comma-separated channel names to exclude (e.g., `off-topic,bot-spam`)
 
 4. **Schedule**
-   - The workflow runs twice daily at **10:00 AM PST** and **5:00 PM PST**.
+   - The workflow runs twice daily at **5:00 AM PST** and **5:00 PM PST**.
    - Scheduled runs target **only the #message-tracker channel**.
    - Messages must start with 📜 followed by the delivery phrase pattern for **today's date and time slot**:
-     - **10am run**: Finds messages starting with `📜 delivery <month> <day> morning` (today's date)
+     - **5am run**: Finds messages starting with `📜 delivery <month> <day> morning` (today's date)
      - **5pm run**: Finds messages starting with `📜 delivery <month> <day> evening` (today's date)
      - Month: 3-letter shorthand (jan, feb, mar, etc.) or full name (january, february, march, etc.)
      - Day: 1-2 digit number matching today's day of month
