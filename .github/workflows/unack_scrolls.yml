@@ -17,7 +17,8 @@ on:
         description: "Comma-separated channel names to include (optional)"
         required: false
       exclude_channel_names:
-        description: "Comma-separated channel names to exclude (optional)"
+        description: "Comma-separated channel names to exclude (use 'none' to clear default)"
+        default: "message-tracker"
         required: false
 
 jobs:
@@ -52,9 +53,9 @@ jobs:
           CHECK_UNICODE: ${{ vars.CHECK_UNICODE }}
           # Channel name filters
           # For scheduled runs: target only message-tracker
-          # For manual runs: use inputs (message-tracker excluded by default)
+          # For manual runs: use inputs (message-tracker excluded by default, use 'none' to clear)
           ALLOW_CHANNEL_NAMES: ${{ github.event_name == 'schedule' && 'message-tracker' || github.event.inputs.allow_channel_names }}
-          EXCLUDE_CHANNEL_NAMES: ${{ github.event_name == 'schedule' && '' || github.event.inputs.exclude_channel_names }}
+          EXCLUDE_CHANNEL_NAMES: ${{ github.event_name == 'schedule' && '' || (github.event.inputs.exclude_channel_names == 'none' && '' || github.event.inputs.exclude_channel_names) }}
           # Delivery phrase filtering (only for scheduled runs targeting message-tracker)
           REQUIRE_DELIVERY_PHRASE: ${{ github.event_name == 'schedule' && 'true' || 'false' }}
           # Safety cap
